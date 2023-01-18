@@ -92,13 +92,20 @@ def discriminator(inputs, num_filters = 64, reuse = False, scope_name = 'discrim
         else:
             assert scope.reuse is False
 
+        # The discriminator is simply a convolution network, includes 4 convolution layers. 
+        # Default stride is (2, 2), so the dimension will be half
         h0 = conv2d_layer(inputs = inputs, filters = num_filters, activation = tf.nn.leaky_relu, name = 'h0_conv')
+        # Default stride is (2, 2), so the dimension will be half
         h1 = conv2d_layer(inputs = h0, filters = num_filters * 2, activation = None, name = 'h1_conv')
         h1_norm = instance_norm_layer(inputs = h1, activation_fn = tf.nn.leaky_relu, name = 'h1_norm')
+        # Default stride is (2, 2), so the dimension will be half
         h2 = conv2d_layer(inputs = h1_norm, filters = num_filters * 4, activation = None, name = 'h2_conv')
-        h2_norm = instance_norm_layer(inputs = h2, activation_fn = tf.nn.leaky_relu, name = 'h2_norm')
+        h2_norm = instance_norm_layer(inputs = h2, activation_fn = tf.nn.leaky_relu, name = 'h2_norm')        
         h3 = conv2d_layer(inputs = h2_norm, filters = num_filters * 8, strides = [1, 1], activation = None, name = 'h3_conv')
         h3_norm = instance_norm_layer(inputs = h3, activation_fn = tf.nn.leaky_relu, name = 'h3_norm')
+
+        # Final convolution layer to produce a 1 dimentional output
+        # The output will have the size (1/8*width, 1/8*height, 1)
         h4 = conv2d_layer(inputs = h3_norm, filters = 1, strides = [1, 1], activation = None, name = 'h4_conv')
 
         return h4
@@ -116,12 +123,15 @@ def generator_resnet(inputs, num_filters = 64, output_channels = 3, reuse = Fals
 
         #output_channels = inputs.shape[-1]
 
+        # Encoder: 3 convolution layers. 
+        # The size will be down to input_width/4, input_height/4
+        # The output feature number will be the num_filters*4
+
         # Check tf.pad using 'REFLECT' mode
         # https://www.tensorflow.org/api_docs/python/tf/pad
         c0 = tf.pad(tensor = inputs, paddings = [[0, 0], [3, 3], [3, 3], [0, 0]], mode = 'REFLECT', name = 'c0_pad')
 
         c1 = conv2d_layer(inputs = c0, filters = num_filters, kernel_size = [7, 7], strides = [1, 1], padding = 'valid', activation = None, name = 'c1_conv')
-
         c1_norm = instance_norm_layer(inputs = c1, activation_fn = tf.nn.relu, name = 'c1_norm')
 
         c2 = conv2d_layer(inputs = c1_norm, filters = num_filters * 2, kernel_size = [3, 3], strides = [2, 2], activation = None, name = 'c2_conv')
@@ -129,7 +139,13 @@ def generator_resnet(inputs, num_filters = 64, output_channels = 3, reuse = Fals
         c3 = conv2d_layer(inputs = c2_norm, filters = num_filters * 4, kernel_size = [3, 3], strides = [2, 2], activation = None, name = 'c3_conv')
         c3_norm = instance_norm_layer(inputs = c3, activation_fn = tf.nn.relu, name = 'c3_norm')
 
-
+        """
+        c4 = conv2d_layer(inputs = c3_norm, filters = num_filters * 8, kernel_size = [3, 3], strides = [2, 2], activation = None, name = 'c4_conv')
+        c4_norm = instance_norm_layer(inputs = c4, activation_fn = tf.nn.relu, name = 'c4_norm')
+        """
+        
+        # Transformation: 9 resnet blocks
+        # Each resnet block includes two convolution layers and one skip connection
         r1 = residual_block(inputs = c3_norm, filters = num_filters * 4, name_prefix = 'residual1_')
         r2 = residual_block(inputs = r1, filters = num_filters * 4, name_prefix = 'residual2_')
         r3 = residual_block(inputs = r2, filters = num_filters * 4, name_prefix = 'residual3_')
@@ -140,6 +156,19 @@ def generator_resnet(inputs, num_filters = 64, output_channels = 3, reuse = Fals
         r8 = residual_block(inputs = r7, filters = num_filters * 4, name_prefix = 'residual8_')
         r9 = residual_block(inputs = r8, filters = num_filters * 4, name_prefix = 'residual9_')
 
+        """
+        r1 = residual_block(inputs = c4_norm, filters = num_filters * 8, name_prefix = 'residual1_')
+        r2 = residual_block(inputs = r1, filters = num_filters * 8, name_prefix = 'residual2_')
+        r3 = residual_block(inputs = r2, filters = num_filters * 8, name_prefix = 'residual3_')
+        r4 = residual_block(inputs = r3, filters = num_filters * 8, name_prefix = 'residual4_')
+        r5 = residual_block(inputs = r4, filters = num_filters * 8, name_prefix = 'residual5_')
+        r6 = residual_block(inputs = r5, filters = num_filters * 8, name_prefix = 'residual6_')
+        r7 = residual_block(inputs = r6, filters = num_filters * 8, name_prefix = 'residual7_')
+        r8 = residual_block(inputs = r7, filters = num_filters * 8, name_prefix = 'residual8_')
+        r9 = residual_block(inputs = r8, filters = num_filters * 8, name_prefix = 'residual9_')
+        """
+        
+        # Decoder: exact opposite of encoder.
         d1 = conv2d_transpose_layer(inputs = r9, filters = num_filters * 2, kernel_size = [3, 3], strides = [2, 2], name = 'd1_deconv')
         d1_norm = instance_norm_layer(inputs = d1, activation_fn = tf.nn.relu, name = 'd1_norm')
         d2 = conv2d_transpose_layer(inputs = d1_norm, filters = num_filters, kernel_size = [3, 3], strides = [2, 2], name = 'd2_deconv')
@@ -147,10 +176,18 @@ def generator_resnet(inputs, num_filters = 64, output_channels = 3, reuse = Fals
         d2_pad = tf.pad(tensor = d2_norm, paddings = [[0, 0], [3, 3], [3, 3], [0, 0]], mode = 'REFLECT', name = 'd2_pad')
         d3 = conv2d_layer(inputs = d2_pad, filters = output_channels, kernel_size = [7, 7], strides = [1, 1], padding = 'valid', activation = tf.nn.tanh, name = 'd3_conv')
 
+        return d3        
 
-        return d3
+        """
+        d1 = conv2d_transpose_layer(inputs = r9, filters = num_filters * 4, kernel_size = [3, 3], strides = [2, 2], name = 'd1_deconv')
+        d1_norm = instance_norm_layer(inputs = d1, activation_fn = tf.nn.relu, name = 'd1_norm')
+        d2 = conv2d_transpose_layer(inputs = d1_norm, filters = num_filters * 2, kernel_size = [3, 3], strides = [2, 2], name = 'd2_deconv')
+        d2_norm = instance_norm_layer(inputs = d2, activation_fn = tf.nn.relu, name = 'd2_norm')
+        d3 = conv2d_transpose_layer(inputs = d2_norm, filters = num_filters, kernel_size = [3, 3], strides = [2, 2], name = 'd3_deconv')
+        d3_norm = instance_norm_layer(inputs = d3, activation_fn = tf.nn.relu, name = 'd3_norm')
+        d3_pad = tf.pad(tensor = d3_norm, paddings = [[0, 0], [3, 3], [3, 3], [0, 0]], mode = 'REFLECT', name = 'd3_pad')
+        d4 = conv2d_layer(inputs = d3_pad, filters = output_channels, kernel_size = [7, 7], strides = [1, 1], padding = 'valid', activation = tf.nn.tanh, name = 'd4_conv')
 
-
-
-
+        return d4
+        """
 

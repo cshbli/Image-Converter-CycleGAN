@@ -1,3 +1,20 @@
+# Change Log
+
+- Added one convolution layer in generator_resnet of `module.py`.
+
+- Make the image input size, filter number, training epochs as paramters instead of fixed values in `train.py`.
+
+- Change the input image size from square to arbitrary rectangle in `utils.py`.
+
+- Add `freeze_model.py` to freeze the training model to Tensorflow inference model in .pb format.
+
+- Change default `--validation_B_dir` in `train.py` to `None`.
+
+- Add `--loss_function` parameter for generator loss and discriminator loss, default is `l2`.
+
+- Add `--lambda_cycle` parameter for the Cycle loss weight, default is `10`.
+
+
 # Image Converter CycleGAN
 
 Lei Mao

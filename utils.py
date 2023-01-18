@@ -29,21 +29,21 @@ def image_scaling_inverse(imgs):
 
     return imgs_rescaled
 
-
-def read_img_modified(img_filepath, load_size = 286, output_size = 256):
+#def read_img_modified(img_filepath, load_size = 286, output_size = 256):
+def read_img_modified(img_filepath, load_size_w=286, load_size_h=286, output_size_w=256, output_size_h=256):
     
     # We first enlarge the original image and downsample the enlarged image to add more data to the train set
 
-    assert load_size >= output_size
+    assert load_size_h >= output_size_h and load_size_w >= output_size_w
 
     img = cv2.imread(img_filepath)
 
-    img_enlarged = cv2.resize(img, (load_size, load_size))
+    img_enlarged = cv2.resize(img, (load_size_w, load_size_h))
 
-    h_start = np.random.randint(load_size - output_size + 1)
-    h_end = h_start + output_size
-    w_start = np.random.randint(load_size - output_size + 1)
-    w_end = w_start + output_size
+    h_start = np.random.randint(load_size_h - output_size_h + 1)
+    h_end = h_start + output_size_h
+    w_start = np.random.randint(load_size_w - output_size_w + 1)
+    w_end = w_start + output_size_h
 
     img_output = img_enlarged[h_start:h_end, w_start:w_end]
 
@@ -57,7 +57,8 @@ def read_img_modified(img_filepath, load_size = 286, output_size = 256):
     return img_output
 
 
-def load_train_data(img_A_dir, img_B_dir, load_size = 286, output_size = 256):
+#def load_train_data(img_A_dir, img_B_dir, load_size = 286, output_size = 256):
+def load_train_data(img_A_dir, img_B_dir, load_size_w=286, load_size_h=286, output_size_w=256, output_size_h=256):
 
     img_A_filepaths = [os.path.join(img_A_dir, file) for file in os.listdir(img_A_dir) if os.path.isfile(os.path.join(img_A_dir, file))]
     img_B_filepaths = [os.path.join(img_B_dir, file) for file in os.listdir(img_B_dir) if os.path.isfile(os.path.join(img_B_dir, file))]
@@ -70,8 +71,8 @@ def load_train_data(img_A_dir, img_B_dir, load_size = 286, output_size = 256):
     img_A_filepaths_sampled = img_A_filepaths[:num_samples]
     img_B_filepaths_sampled = img_B_filepaths[:num_samples]
 
-    img_A_dataset = [read_img_modified(img_filepath = filepath, load_size = load_size, output_size = output_size) for filepath in img_A_filepaths_sampled]
-    img_B_dataset = [read_img_modified(img_filepath = filepath, load_size = load_size, output_size = output_size) for filepath in img_B_filepaths_sampled]
+    img_A_dataset = [read_img_modified(img_filepath = filepath, load_size_w=load_size_w, load_size_h=load_size_h, output_size_w=output_size_w, output_size_h=output_size_h) for filepath in img_A_filepaths_sampled]
+    img_B_dataset = [read_img_modified(img_filepath = filepath, load_size_w=load_size_w, load_size_h=load_size_h, output_size_w=output_size_w, output_size_h=output_size_h) for filepath in img_B_filepaths_sampled]
 
     img_A_dataset = np.array(img_A_dataset)
     img_B_dataset = np.array(img_B_dataset)
@@ -79,24 +80,24 @@ def load_train_data(img_A_dir, img_B_dir, load_size = 286, output_size = 256):
     return img_A_dataset, img_B_dataset
 
 
-
-def load_data(img_dir, load_size = 256):
+#def load_data(img_dir, load_size = 256):
+def load_data(img_dir, load_size_w=256, load_size_h=256):
 
     img_filepaths = [os.path.join(img_dir, file) for file in os.listdir(img_dir) if os.path.isfile(os.path.join(img_dir, file))]
-    img_dataset = [cv2.resize(cv2.imread(filepath), (load_size, load_size)) for filepath in img_filepaths]
+    img_dataset = [cv2.resize(cv2.imread(filepath), (load_size_w, load_size_h)) for filepath in img_filepaths]
     img_dataset = np.array(img_dataset)
 
     return img_dataset
 
+#def img_subsampling(img, load_size, output_size):
+def img_subsampling(img, load_size_w, load_size_h, output_size_w, output_size_h):
 
-def img_subsampling(img, load_size, output_size):
+    img_enlarged = cv2.resize(img, (load_size_w, load_size_h))
 
-    img_enlarged = cv2.resize(img, (load_size, load_size))
-
-    h_start = np.random.randint(load_size - output_size + 1)
-    h_end = h_start + output_size
-    w_start = np.random.randint(load_size - output_size + 1)
-    w_end = w_start + output_size
+    h_start = np.random.randint(load_size_h - output_size_h + 1)
+    h_end = h_start + output_size_h
+    w_start = np.random.randint(load_size_w - output_size_w + 1)
+    w_end = w_start + output_size_w
 
     img_output = img_enlarged[h_start:h_end, w_start:w_end]
 
@@ -106,8 +107,8 @@ def img_subsampling(img, load_size, output_size):
 
     return img_output
 
-
-def sample_train_data(img_A_dataset, img_B_dataset, load_size = 286, output_size = 256, batch_size_maximum = 1000):
+#def sample_train_data(img_A_dataset, img_B_dataset, load_size = 286, output_size = 256, batch_size_maximum = 1000):
+def sample_train_data(img_A_dataset, img_B_dataset, load_size_w = 286, load_size_h = 286, output_size_w = 256, output_size_h = 256, batch_size_maximum = 1000):
 
     num_samples = min(len(img_A_dataset), len(img_B_dataset), batch_size_maximum)
     train_data_A_idx = np.arange(len(img_A_dataset))
@@ -122,12 +123,12 @@ def sample_train_data(img_A_dataset, img_B_dataset, load_size = 286, output_size
     train_data_B = list()
 
     for img in img_A_subset:
-        img_output = img_subsampling(img = img, load_size = load_size, output_size = output_size)
+        img_output = img_subsampling(img = img, load_size_w=load_size_w, load_size_h=load_size_h, output_size_w = output_size_w, output_size_h=output_size_h)
         img_output = image_scaling(imgs = img_output)
         train_data_A.append(img_output)
 
     for img in img_B_subset:
-        img_output = img_subsampling(img = img, load_size = load_size, output_size = output_size)
+        img_output = img_subsampling(img = img, load_size_w=load_size_w, load_size_h=load_size_h, output_size_w = output_size_w, output_size_h=output_size_h)
         img_output = image_scaling(imgs = img_output)
         train_data_B.append(img_output)
 

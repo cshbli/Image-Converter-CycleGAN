@@ -7,7 +7,8 @@ from datetime import datetime
 
 class CycleGAN(object):
 
-    def __init__(self, input_size, num_filters = 64, discriminator = discriminator, generator = generator_resnet, lambda_cycle = 10, mode = 'train', log_dir = './log'):
+    # def __init__(self, input_size, num_filters = 64, discriminator = discriminator, generator = generator_resnet, lambda_cycle = 10, mode = 'train', log_dir = './log'):
+    def __init__(self, input_size, num_filters = 64, discriminator = discriminator, generator = generator_resnet, lambda_cycle = 10, mode = 'train', loss_function='l2', log_dir = './log'):
 
         self.input_size = input_size
 
@@ -16,11 +17,13 @@ class CycleGAN(object):
         self.lambda_cycle = lambda_cycle
         self.num_filters = num_filters
         self.mode = mode
+        self.loss_function = loss_function
 
         self.build_model()
         self.optimizer_initializer()
 
-        self.saver = tf.train.Saver()
+        # self.saver = tf.train.Saver()
+        self.saver = tf.train.Saver(max_to_keep=0)
         self.sess = tf.Session()
         self.sess.run(tf.global_variables_initializer())
 
@@ -53,29 +56,44 @@ class CycleGAN(object):
         self.discrimination_B_fake = self.discriminator(inputs = self.generation_B, num_filters = self.num_filters, reuse = False, scope_name = 'discriminator_B')
 
         # Cycle loss
+        # we are able to get the image back using another generator and thus the difference between the original image and the cyclic image should be as small as possible.
         self.cycle_loss = l1_loss(y = self.input_A_real, y_hat = self.cycle_A) + l1_loss(y = self.input_B_real, y_hat = self.cycle_B)
 
         # Generator loss
         # Generator wants to fool discriminator
-        self.generator_loss_A2B = l2_loss(y = tf.ones_like(self.discrimination_B_fake), y_hat = self.discrimination_B_fake)
-        self.generator_loss_B2A = l2_loss(y = tf.ones_like(self.discrimination_A_fake), y_hat = self.discrimination_A_fake)
+        if self.loss_function == 'l2':
+            self.generator_loss_A2B = l2_loss(y = tf.ones_like(self.discrimination_B_fake), y_hat = self.discrimination_B_fake)
+            self.generator_loss_B2A = l2_loss(y = tf.ones_like(self.discrimination_A_fake), y_hat = self.discrimination_A_fake)
+        elif self.loss_function == 'l1':
+            self.generator_loss_A2B = l1_loss(y = tf.ones_like(self.discrimination_B_fake), y_hat = self.discrimination_B_fake)
+            self.generator_loss_B2A = l1_loss(y = tf.ones_like(self.discrimination_A_fake), y_hat = self.discrimination_A_fake)
 
         # Merge the two generators and the cycle loss
+        # The multiplicative factor of lambda_cycle=10 for cyc_loss assigns more importance to cyclic loss than the discrimination loss
         self.generator_loss = self.generator_loss_A2B + self.generator_loss_B2A + self.lambda_cycle * self.cycle_loss
 
-        # Discriminator loss
+        # Discriminator output
         self.discrimination_input_A_real = self.discriminator(inputs = self.input_A_real, num_filters = self.num_filters, reuse = True, scope_name = 'discriminator_A')
         self.discrimination_input_B_real = self.discriminator(inputs = self.input_B_real, num_filters = self.num_filters, reuse = True, scope_name = 'discriminator_B')
         self.discrimination_input_A_fake = self.discriminator(inputs = self.input_A_fake, num_filters = self.num_filters, reuse = True, scope_name = 'discriminator_A')
         self.discrimination_input_B_fake = self.discriminator(inputs = self.input_B_fake, num_filters = self.num_filters, reuse = True, scope_name = 'discriminator_B')
 
         # Discriminator wants to classify real and fake correctly
-        self.discriminator_loss_input_A_real = l2_loss(y = tf.ones_like(self.discrimination_input_A_real), y_hat = self.discrimination_input_A_real)
-        self.discriminator_loss_input_A_fake = l2_loss(y = tf.zeros_like(self.discrimination_input_A_fake), y_hat = self.discrimination_input_A_fake)
+        # Discriminator must be trained such that recommendation for images from category A must be as close to 1, and vice versa for discriminator B. 
+        if self.loss_function == 'l2':
+            self.discriminator_loss_input_A_real = l2_loss(y = tf.ones_like(self.discrimination_input_A_real), y_hat = self.discrimination_input_A_real)
+            self.discriminator_loss_input_A_fake = l2_loss(y = tf.zeros_like(self.discrimination_input_A_fake), y_hat = self.discrimination_input_A_fake)
+        elif self.loss_function == 'l1':
+            self.discriminator_loss_input_A_real = l1_loss(y = tf.ones_like(self.discrimination_input_A_real), y_hat = self.discrimination_input_A_real)
+            self.discriminator_loss_input_A_fake = l1_loss(y = tf.zeros_like(self.discrimination_input_A_fake), y_hat = self.discrimination_input_A_fake)
         self.discriminator_loss_A = (self.discriminator_loss_input_A_real + self.discriminator_loss_input_A_fake) / 2
 
-        self.discriminator_loss_input_B_real = l2_loss(y = tf.ones_like(self.discrimination_input_B_real), y_hat = self.discrimination_input_B_real)
-        self.discriminator_loss_input_B_fake = l2_loss(y = tf.zeros_like(self.discrimination_input_B_fake), y_hat = self.discrimination_input_B_fake)
+        if self.loss_function == 'l2':
+            self.discriminator_loss_input_B_real = l2_loss(y = tf.ones_like(self.discrimination_input_B_real), y_hat = self.discrimination_input_B_real)
+            self.discriminator_loss_input_B_fake = l2_loss(y = tf.zeros_like(self.discrimination_input_B_fake), y_hat = self.discrimination_input_B_fake)
+        elif self.loss_function == 'l1':
+            self.discriminator_loss_input_B_real = l1_loss(y = tf.ones_like(self.discrimination_input_B_real), y_hat = self.discrimination_input_B_real)
+            self.discriminator_loss_input_B_fake = l1_loss(y = tf.zeros_like(self.discrimination_input_B_fake), y_hat = self.discrimination_input_B_fake)
         self.discriminator_loss_B = (self.discriminator_loss_input_B_real + self.discriminator_loss_input_B_fake) / 2
 
         # Merge the two discriminators into one
@@ -137,9 +155,9 @@ class CycleGAN(object):
         return os.path.join(directory, filename)
 
     def load(self, filepath):
-
-        self.saver.restore(self.sess, filepath)
-
+        checkpoint = tf.train.latest_checkpoint(filepath)
+        #self.saver.restore(self.sess, filepath)
+        self.saver.restore(self.sess, checkpoint)
 
     def summary(self):
 
