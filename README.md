@@ -14,7 +14,21 @@
 
 - Add `--lambda_cycle` parameter for the Cycle loss weight, default is `10`.
 
-# Tensorflow 1.12.0 Environment 
+# Tensorflow 1.12.0 Environment
+
+## Docker
+
+1. Build docker from docker file
+
+  ```
+  docker build -f Dockerfile -t cycle_gan:tf-1.12.0 .
+  ```
+
+2. Run docker container
+
+  ```
+  docker run --gpus all -it --name cycle-gan -v ~/Projects:/Projects cycle_gan:tf-1.12.0 bash
+  ```
 
 ## Virtual Environment
 
