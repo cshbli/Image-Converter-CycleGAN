@@ -14,6 +14,76 @@
 
 - Add `--lambda_cycle` parameter for the Cycle loss weight, default is `10`.
 
+# Tensorflow 1.12.0 Environment 
+
+## Virtual Environment
+
+1. Install Miniconda
+
+  Miniconda is the recommended approach for installing TensorFlow with GPU support. It creates a separate environment to avoid changing any installed software in your system. This is also the easiest way to install the required software especially for the GPU setup.
+
+  You can use the following command to install Miniconda. During installation, you may need to press enter and type "yes".
+
+  ```
+  curl https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -o Miniconda3-latest-Linux-x86_64.sh
+  bash Miniconda3-latest-Linux-x86_64.sh
+  ```
+
+2. Create a conda environment
+
+  Please make sure the python version is 3.6. Higher version will not be able to install Tensorflow 1.12.0.
+
+  ```
+  conda create --name tf1.12 python=3.6
+  ```
+
+  You can deactivate and activate it with the following commands.
+
+  ```
+  conda deactivate
+  conda activate tf1.12
+  ```
+
+  <b>Make sure it is activated for the rest of the installation.</b>
+
+3. Install CUDA and cuDNN with Conda:
+
+  For Tensorflow 1.12.0, please make sure the cudatoolkit is `9.0`, not `9`. Otherwise `9.2` will be installed, which is incompatiable with Tensorflow 1.12.0.
+
+  ```
+  conda install -c conda-forge cudatoolkit=9.0 cudnn=7
+  ```
+
+  Configure the system paths. You can do it with following command everytime your start a new terminal after activating your conda environment.
+
+  ```
+  export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$CONDA_PREFIX/lib/
+  ```
+
+  For your convenience it is recommended that you automate it with the following commands. The system paths will be automatically configured when you activate this conda environment.
+
+  ```
+  mkdir -p $CONDA_PREFIX/etc/conda/activate.d
+  echo 'export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$CONDA_PREFIX/lib/' > $CONDA_PREFIX/etc/conda/activate.d/env_vars.sh
+  ```
+
+4. Install Tensorflow-GPU 1.12.0
+
+  ```
+  pip install tensorflow-gpu==1.12.0
+  ```
+
+- Downgrade numpy version
+
+  ```
+  pip install numpy==1.16.0  
+  ```
+
+5. Verify install
+
+  ```  
+  sess = tf.Session(config=tf.ConfigProto(log_device_placement=True))
+  ```
 
 # Image Converter CycleGAN
 
